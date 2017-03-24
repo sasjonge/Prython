@@ -1,14 +1,15 @@
-run_python_script(PathTo,ScriptName,Option,Lines):-
+py_run(PathTo,ScriptName,Option,Lines):-
 	string_concat(PathTo,ScriptName,Script),
     setup_call_cleanup(
     process_create(path(python),[Script,Option],[stdout(pipe(Out))]),
-    read_lines(Out,Str_Lines),
-    close(Out)).
+    read_lines(Out,OLines),
+    close(Out)),
+	string_list_to_list(OLines,Lines).
 
-run_python_script(ScriptName,Option,Lines) :-
-	run_python('scripts/',ScriptName,Option,Lines).
+py_run(ScriptName,Option,Lines) :-
+	py_run('scripts/',ScriptName,Option,Lines).
 
-run_python_function(PathTo,ScriptName,FunctionName,Parameter,Lines):-
+py_call_base(PathTo,ScriptName,FunctionName,Parameter,Lines):-
 	working_directory(OldPath,PathTo),
 	string_concat('import ',ScriptName,Temp1),
 	string_concat(Temp1,'; ret = ',Temp2),
@@ -22,12 +23,32 @@ run_python_function(PathTo,ScriptName,FunctionName,Parameter,Lines):-
 	string_concat(Temp7,'); print str(ret)',CallArgu),
 	setup_call_cleanup(
     process_create(path(python),['-c', CallArgu],[stdout(pipe(Out))]),
-    read_lines(Out,Lines),
+    read_lines(Out,OLines),
     close(Out)),
+    maplist(string_list_to_list,OLines,Lines),
     working_directory(_,OldPath).
 
-run_python_function(ScriptName,FunctionName,Parameter,Lines):-
-	run_python_function('scripts/',ScriptName,FunctionName,Parameter,Lines).
+
+string_list_to_list(StrList, List) :-
+	name(StrList,CharList),
+	CharList = [FirstChar|Rest],
+	reverse(Rest, [LastChar|Reverse]),
+	reverse(Reverse,CleanedString),
+	((FirstChar=91,LastChar=93)
+	-> name(CleanedAtom,CleanedString),atomic_list_concat(List,',',CleanedAtom)).
+
+string_list_to_list(StrList, List) :-
+	name(StrList,CharList),
+	CharList = [FirstChar|Rest],
+	reverse(Rest, [LastChar|_]),
+	((FirstChar=\=91;LastChar=\=93)
+	-> List = StrList).
+
+string_list_to_list(StrList, List) :-
+	name(StrList,CharList),
+	length(CharList,Len),
+	( Len =< 1
+	-> List = StrList).
 
 read_lines(Out, Lines) :-
         read_line_to_codes(Out, Line1),
