@@ -9,10 +9,10 @@ py_run(PathTo,ScriptName,Option,Lines):-
 py_run(ScriptName,Option,Lines) :-
 	py_run('scripts/',ScriptName,Option,Lines).
 
-py_call_base(PathTo,ScriptName,FunctionName,Parameter,Lines):-
+py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return):-
 	working_directory(OldPath,PathTo),
-	string_concat('import ',ScriptName,Temp1),
-	string_concat(Temp1,'; ret = ',Temp2),
+	string_concat('import sys;import io; import ',ScriptName,Temp1),
+	string_concat(Temp1,';save_out = sys.stdout;sys.stdout = io.BytesIO(); ret = ',Temp2),
 	string_concat(Temp2,ScriptName,Temp3),
 	string_concat(Temp3,'.',Temp4),
 	string_concat(Temp4,FunctionName,Temp5),
@@ -20,14 +20,21 @@ py_call_base(PathTo,ScriptName,FunctionName,Parameter,Lines):-
 	atomic_list_concat(Parameter,',',Clist),
 	atom_string(Clist,ParameterString),
 	string_concat(Temp6,ParameterString,Temp7),
-	string_concat(Temp7,'); print str(ret)',CallArgu),
+	string_concat(Temp7,');sys.stdout = save_out; print str(ret)',CallArgu),
 	setup_call_cleanup(
     process_create(path(python),['-c', CallArgu],[stdout(pipe(Out))]),
-    read_lines(Out,OLines),
+    read_lines(Out,Return),
     close(Out)),
-    maplist(string_list_to_list,OLines,Lines),
+    % maplist(string_list_to_list,OLines,Return),
     working_directory(_,OldPath).
 
+py_call(PathTo,ScriptName,FunctionName,Parameter,ReturnTyped) :-
+	py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return),
+	maplist(return_true_type,Return,ReturnTyped).
+
+return_true_type(Input, TypedInput) :-
+	(is_list(Input) -> maplist(return_true_type,Input,TypedInput));
+	(atom_number(Input,TypedInput)-> true;TypedInput=Input).	
 
 string_list_to_list(StrList, List) :-
 	name(StrList,CharList),
