@@ -1,6 +1,6 @@
 # Prython
 
-Prython is a prolog module to run python function in prolog.
+Prython is a prolog module to run python functions in prolog.
 
 ## Usage
 
@@ -19,21 +19,27 @@ Instead of this you cann also use,
 
 `py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped)`
 
-where you don't need to know the path to the script. Instead your package should have this structure:
-
-```
-+-- prolog
-|   +-- your_prolog_file.pl
-+-- scripts
-|   +-- your_python_script.py
-```
+where you don't need to give the path to the script. Instead the path need to be added by using `add_py_path(+Path).`.
 
 An example call would look like this:
 
 ```
+?- add_py_path('/home/path/to/pythonpackage/scripts').
+true.
+
 ?- py_call('test','ret_list',['9','8','5'],Return).
 Return = [9, 8, 5] 
 ```
+
+## TODO
+
+### Better path handling
+
+Till now the pathes need to be added by a call to an predicate. I am open for ideas, how to handle this better.
+
+### Dicts
+
+Another part that is missing is the handling of dict's as return value. This will be added, but will probably use prolog dicts, which are only available with Prolog > 7.
 
 ## Tests
 
@@ -41,6 +47,6 @@ To run the PLUnit tests:
 
 ```prolog
 use_module(prython).
-use_module(prython).
+load_test_files(prython).
 run_tests.
 ```

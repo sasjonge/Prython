@@ -35,6 +35,8 @@
       py_call_base/5,
       py_call/5,
       py_call/4,
+      add_py_path/1,
+      remove_py_path/1,
       return_true_type/2,
       string_list_to_list/2,
       read_lines/2,
@@ -91,10 +93,27 @@ py_call(PathTo,ScriptName,FunctionName,Parameter,ReturnTyped) :-
 % @param ReturnTyped The return value of the python function
 %
 py_call(ScriptName,FunctionName,Parameter,ReturnTyped) :-
-	source_file(File),
-	string_concat(Path,'/prython.pl',File),
-	string_concat(Path,'/../scripts',FullPath),
-	py_call(FullPath,ScriptName,FunctionName,Parameter,ReturnTyped).
+	python_path(Path),
+	atomic_list_concat([Path,'/',ScriptName,'.py'],FullPath),
+	(exists_file(FullPath) -> py_call(Path,ScriptName,FunctionName,Parameter,ReturnTyped)).
+
+%% add_py_path(+Path) is det.
+%
+% Add paths to the python files
+%
+% @param Path Path to the python file
+%
+add_py_path(Path) :-
+	assert(python_path(Path)).
+
+%% remove_py_path(+Path) is det.
+%
+% Removes the paths to the python files
+%
+% @param Path Path to the python file
+%
+remove_py_path(Path) :-
+	retract(python_path(Path)).
 
 %%%%%%%%%%%%%%% Help Predicates %%%%%%%%%%%%%%%%%%%%%%
 
