@@ -37,6 +37,23 @@ Return = [9, 8, 5]
 
 Till now the pathes need to be added by a call to an predicate. I am open for ideas, how to handle this better.
 
+An example how i used the module, is by organizing the directory in the following structure:
+
+```
++-- prolog
+|   +-- your_prolog_file.pl
++-- scripts
+|   +-- your_python_script.py
+```
+
+Now i can get the path to the python file automatically like this:
+
+```
+source_file(File),
+string_concat(Path,'/your_prolog_file.pl',File),
+string_concat(Path,'/../scripts',FullPath)
+```
+
 ### Dicts
 
 Another part that is missing is the handling of dict's as return value. This will be added, but will probably use prolog dicts, which are only available with Prolog > 7.
