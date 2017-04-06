@@ -4,7 +4,10 @@
 :- source_file(File),string_concat(Path,'/prython.pl',File),string_concat(Path,'/../scripts',FullPath),add_py_path(FullPath).
 
 test(py_call_string) :-
-        once(py_call('test','ret_str',[],'Hello World')).
+        once(py_call('test','ret_str',['Hello World'],'Hello World')).
+
+test(py_call_par_list) :-
+        once(py_call('test','ret_concatenated_str',['Hello',' World','!'],'Hello World!')).
 
 test(py_call_float) :-
         once(py_call('test','ret_num',[1,1,1],3.3123123)).
@@ -14,5 +17,8 @@ test(py_call_int) :-
 
 test(py_call_list) :-
         once(py_call('test','ret_list',[1,1,5],[1,1,5])).
+
+test(py_call_nested_list) :-
+        once(py_call('test','ret_nested_list',[1,1,5],[[1,1,5],[[1,1,5]]])).
 
 :- end_tests(prython).
