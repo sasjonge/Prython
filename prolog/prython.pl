@@ -38,6 +38,7 @@
       add_py_path/1,
       remove_py_path/1,
       create_parameter_string/2,
+      list_to_atom/2,
       return_true_type/2,
       string_list_to_list/2,
       string_list_to_list_one/2,
@@ -122,25 +123,6 @@ remove_py_path(Path) :-
 
 %%%%%%%%%%%%%%% Help Predicates %%%%%%%%%%%%%%%%%%%%%%
 
-%% create_parameter_string(Parameter,ParameterString) is semidet.
-%
-create_parameter_string(Parameter,ParameterString) :-
-  is_list(Parameter),
-  maplist(create_parameter_string,Parameter,ParameterTrueTyped),
-  atomic_list_concat(ParameterTrueTyped,',',Clist),
-  atom_string(Clist,ParameterString).
-
-create_parameter_string(Parameter,ParameterString) :-
-  atom(Parameter),
-  name(Parameter,ParList),
-  reverse([39|ParList],Reversed),
-  reverse([39|Reversed], ReversedFull),
-  name(ParameterString,ReversedFull).
-
-create_parameter_string(Parameter,ParameterString) :-
-  number(Parameter),
-  ParameterString=Parameter.  
-
 %% return_true_type(+Input:string, -TypedInput) is semidet.
 %
 % Predicate to get the input in the right type
@@ -179,6 +161,10 @@ string_list_to_list(Original,List) :-
   (is_list(NewList) ->
     string_list_to_list(NewList,List);
     List=Original).
+
+string_list_to_list(Original,List) :-
+  number(Original),
+  List=Original.
   
 %% string_list_to_list(Original, List) is semidet.
 %
@@ -218,6 +204,39 @@ string_list_to_list_one(Original,RestStr,CountBracket,CurrString,CurrList,List) 
   (append(CurrString,[FirstChar],NewString),string_list_to_list_one(Original,Rest,CountBracket,NewString,CurrList,List))
   ).
 
+%% create_parameter_string(Parameter,ParameterString) is semidet.
+%
+create_parameter_string(Parameter,ParameterString) :-
+  list_to_atom(Parameter,ParameterAtom),
+  name(ParameterAtom,ParChr),
+  ParChr=[First|Rest],
+  reverse(Rest,Reversed),
+  Reversed=[FirstRev|RestRev],
+  reverse(RestRev,Cleaned),
+  ((First = 91,FirstRev=93) -> 
+    (name(CleanedAtom,Cleaned),ParameterString=CleanedAtom);
+    ParameterString=ParameterAtom).  
+
+list_to_atom(List,Atom) :-
+  is_list(List),
+  maplist(list_to_atom,List,StrList),
+  atomic_list_concat(StrList,',',ListStr),
+  name(ListStr,ChrList),
+  reverse([91|ChrList],Reversed),
+  reverse([93|Reversed], AtomChrList),
+  name(Atom,AtomChrList).
+
+list_to_atom(List,Atom) :-
+  number(List),
+  Atom=List.
+
+list_to_atom(List,Atom) :-
+  atom(List),
+  name(List,ListChr),
+  reverse([39|ListChr],Reversed),
+  reverse([39|Reversed], AtomFull),
+  name(Atom,AtomFull).
+
 %% max_depth(+List,-MaxDepth) is det
 % 
 % Calculates the max. depth of a nested list
@@ -232,7 +251,7 @@ max_depth(List,MaxDepth) :-
   ;MaxDepth = 0).
 
 max_depth([],MaxDepth) :-
-  MaxDepth = 0.
+  MaxDepth = 1.
 
 %% read_lines(+Out, -Lines) is semidet.
 %

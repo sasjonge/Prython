@@ -21,4 +21,7 @@ test(py_call_list) :-
 test(py_call_nested_list) :-
         once(py_call('test','ret_nested_list',[1,1,5],[[1,1,5],[[1,1,5]]])).
 
+test(py_call_nested_list_as_input) :-
+        once(py_call('test','ret_nested_list_as_input',[[[1,1,5],[[1,1,5]]]],[[1,1,5],1])).
+
 :- end_tests(prython).
