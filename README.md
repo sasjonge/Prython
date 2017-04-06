@@ -15,7 +15,7 @@ There are two recommended predicates to call python functions. The first one is
 Return = 22.3123123.
 ```
 
-Instead of this you cann also use,
+Instead of this you can also use,
 
 `py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped)`
 
@@ -35,7 +35,7 @@ Return = [9, 8, 5]
 
 ### Better path handling
 
-Till now the pathes need to be added by a call to an predicate. I am open for ideas, how to handle this better.
+Until now the paths need to be added by a call to a predicate. I am open to ideas on how to handle this better.
 
 An example how i used the module, is by organizing the directory in the following structure:
 
@@ -46,7 +46,7 @@ An example how i used the module, is by organizing the directory in the followin
 |   +-- your_python_script.py
 ```
 
-Now i can get the path to the python file automatically like this:
+Now I can get the path to the python file automatically like this:
 
 ```
 source_file(File),
@@ -56,7 +56,7 @@ string_concat(Path,'/../scripts',FullPath)
 
 ### Dicts
 
-Another part that is missing is the handling of dict's as return value. This will be added, but will probably use prolog dicts, which are only available with Prolog > 7.
+Another part that is missing is the handling of dict's as return value. This will be added, but will probably use prolog dicts, which are only available with Prolog 7 and newer.
 
 ## Tests
 
