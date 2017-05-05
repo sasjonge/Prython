@@ -69,9 +69,9 @@ py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return):-
     read_lines(Out,OLines),
     close(Out)),
     atomic_list_concat(OLines,OLine), % To also get strings over more than one line
-    atomic_list_concat(Words, ', ', OLine), 
-    atomic_list_concat(Words, ',', AtomNoBlank),
-    string_list_to_list(AtomNoBlank,Return),
+    atomic_list_concat(Words, ', ', OLine), % Split the output 
+    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
+    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
     working_directory(_,OldPath),!.
 
 %% py_call(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
@@ -85,8 +85,8 @@ py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return):-
 % @param ReturnTyped The return value of the python function
 %
 py_call(PathTo,ScriptName,FunctionName,Parameter,ReturnTyped) :-
-	py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return),
-	return_true_type(Return,ReturnTyped).
+	py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return), 
+	return_true_type(Return,ReturnTyped). % return the typed output
 
 %% py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
 %
