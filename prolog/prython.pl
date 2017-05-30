@@ -32,11 +32,11 @@
 
 :- module(prython,
     [
-      py_call_base/5,
-      py_call/5,
+      py_call_init/0,
+      py_call_base/4,
       py_call/4,
+      create_module_of_script/2,
       add_py_path/1,
-      remove_py_path/1,
       create_parameter_string/2,
       list_to_atom/2,
       return_true_type/2,
@@ -45,8 +45,17 @@
       string_list_to_list_one/6,
       read_lines/2,
       max_depth/2,
-      remove_char/3
+      remove_char/3,
+      python_module/1
     ]).
+
+:- dynamic
+        python_module/1.
+
+py_call_init :-
+	jpl_call( 'java.lang.System', setProperty, ['jpy.config','/home/sascha/suturo16/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties'], P),
+	jpl_list_to_array([''],A),
+	jpl_call('org.jpy.PyLib',startPython,[A],Ret).
 
 %% py_call_base(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?Return) is semidet.
 %
@@ -58,35 +67,32 @@
 % @param Parameter The Parameter for the python function
 % @param Return The return value of the python function as a string
 %
-py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return):-
-	working_directory(OldPath,PathTo),
-  create_parameter_string(Parameter,ParameterString),
-	atomic_list_concat(['import sys;import io; import ',ScriptName,
-		';save_out = sys.stdout;sys.stdout = io.BytesIO(); ret = ',ScriptName,'.'
-		,FunctionName,'(',ParameterString,');sys.stdout = save_out; print str(ret)'],CallArgu),
-	setup_call_cleanup(
-    process_create(path(python),['-c', CallArgu],[stdout(pipe(Out))]),
-    read_lines(Out,OLines),
-    close(Out)),
-    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
-    atomic_list_concat(Words, ', ', OLine), % Split the output 
-    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
-    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
-    working_directory(_,OldPath),!.
+py_call_base(Module,FunctionName,Parameter,Return):-
+	% TODO Paramets to java_objects
+	jpl_list_to_array(Parameter,ParameterArray),
+	jpl_call(Module,call,[FunctionName,ParameterArray],ReturnValue),
+	jpl_call(ReturnValue,getObjectValue,[],ReturnObject),
+	jpl_call(ReturnObject,toString,[],Return).
+%    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
+%    atomic_list_concat(Words, ', ', OLine), % Split the output 
+%    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
+%    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
+%    working_directory(_,OldPath),!.
 
-%% py_call(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
-%
-% Predicate to call a function of a python file. It returns the values with the right types.
-%
-% @param PathTo The path to the python file
-% @param ScriptName The name of the python script
-% @param FunctionName The function to be called
-% @param Parameter The Parameter for the python function
-% @param ReturnTyped The return value of the python function
-%
-py_call(PathTo,ScriptName,FunctionName,Parameter,ReturnTyped) :-
-	py_call_base(PathTo,ScriptName,FunctionName,Parameter,Return), 
-	return_true_type(Return,ReturnTyped). % return the typed output
+%		working_directory(OldPath,PathTo),
+%  create_parameter_string(Parameter,ParameterString),
+%	atomic_list_concat(['import sys;import io; import ',ScriptName,
+%		';save_out = sys.stdout;sys.stdout = io.BytesIO(); ret = ',ScriptName,'.'
+%		,FunctionName,'(',ParameterString,');sys.stdout = save_out; print str(ret)'],CallArgu),
+%	setup_call_cleanup(
+ %   process_create(path(python),['-c', CallArgu],[stdout(pipe(Out))]),
+%    read_lines(Out,OLines),
+%    close(Out)),
+%    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
+%    atomic_list_concat(Words, ', ', OLine), % Split the output 
+%    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
+%    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
+%    working_directory(_,OldPath),!.
 
 %% py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
 %
@@ -99,9 +105,13 @@ py_call(PathTo,ScriptName,FunctionName,Parameter,ReturnTyped) :-
 % @param ReturnTyped The return value of the python function
 %
 py_call(ScriptName,FunctionName,Parameter,ReturnTyped) :-
-	python_path(Path),
-	atomic_list_concat([Path,'/',ScriptName,'.py'],FullPath),
-	(exists_file(FullPath) -> py_call(Path,ScriptName,FunctionName,Parameter,ReturnTyped)).
+	create_module_of_script(ScriptName,Module),
+	py_call_base(Module,FunctionName,Parameter,Return),
+	return_true_type(Return,ReturnTyped),!.
+
+create_module_of_script(ScriptName,Module) :-
+	python_module(MetaModule),
+	jpl_call(MetaModule,importModule,[ScriptName],Module).
 
 %% add_py_path(+Path) is det.
 %
@@ -110,16 +120,12 @@ py_call(ScriptName,FunctionName,Parameter,ReturnTyped) :-
 % @param Path Path to the python file
 %
 add_py_path(Path) :-
-	assert(python_path(Path)).
-
-%% remove_py_path(+Path) is det.
-%
-% Removes the paths to the python files
-%
-% @param Path Path to the python file
-%
-remove_py_path(Path) :-
-	retract(python_path(Path)).
+	(not(python_module(Module)) -> jpl_call('org.jpy.PyModule',importModule,['sys'],Module);python_module(Module)),
+	jpl_datums_to_array([Path], ParameterArray),
+	jpl_call(Module,getAttribute,['path'],Return),
+	jpl_call(Return,call,[append,ParameterArray],NewModule),
+	ignore((python_module(M),retract(python_module(M)))), % Retract all python_modules
+	assert(python_module(Module)).
 
 %%%%%%%%%%%%%%% Help Predicates %%%%%%%%%%%%%%%%%%%%%%
 
