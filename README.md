@@ -1,5 +1,7 @@
 # Prython
 
+Version: 0.2 
+
 Prython is a fast and easy-to-use prolog module to run python functions in prolog. It uses the bi-directional Python-Java bridge JPY to call CPython directly.
 
 ## Installation
