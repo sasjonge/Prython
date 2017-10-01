@@ -108,7 +108,11 @@ With this new version, it should be possible to implement a handling for Python 
 
 ## Speed
 
+Simple profiling shows that prython needs on average 0,48ms per call (tested with 50.000 calls to the simple test function ret_int). 
 
+Here a graph of the speedtest:
+
+![Speed Test Graph](speedtest.png)
 
 ## Tests
 
