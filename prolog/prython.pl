@@ -49,9 +49,7 @@
       read_lines/2,
       max_depth/2,
       remove_char/3,
-      python_module/1,
-      timed_test/0,
-      loop/1
+      python_module/1
     ]).
 
 :- dynamic
@@ -350,22 +348,3 @@ remove_char(String, Char, NewString) :-
 	name(String,CharList),
 	delete(CharList,Char,CleanedCharList),
 	name(NewString,CleanedCharList).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-:- use_module(library(statistics)).
-
-loop(0) :- true.
-
-loop(A) :-
-	timed_test,
-	B is A - 1,
-	loop(B).
-
-timed_test :-
-	%py_call('test_prython','ret_str',['Hello World'],'Hello World').
-	%py_call('test_prython','ret_concatenated_str',['Hello',' World','!'],'Hello World!'),
-	%py_call('test_prython','ret_num',[1,1,1],3.3123123),
-	py_call('test_prython','ret_int',[1,1,5],7).
-	%py_call('test_prython','ret_list',[1,1,5],'java.lang.Integer',[0],[1,1,5]).
