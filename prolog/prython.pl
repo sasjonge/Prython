@@ -61,7 +61,7 @@
 %
 % Inits the jpy core by setting a system proberty and starting the python interpreter
 %
-py_call_init(PathToJPYConfig) :-
+py_call_init :-
 	py_call_init('/path/to/your/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties').
 
 %% py_call_init(+PathToJPYConfig)
@@ -89,12 +89,11 @@ add_py_path(Path) :-
 	ignore((python_module(M),retract(python_module(M)))), % Retract all python_modules
 	assert(python_module(Module)).
 
-%% py_call_base(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?Return) is semidet.
+%% py_call_base(+PathTo:string, +FunctionName:string, +Parameter:list, ?Return) is semidet.
 %
 % Base predicate to call a function of a python file.
 %
-% @param PathTo The path to the python file
-% @param ScriptName The name of the python script
+% @param Module The name of the python script
 % @param FunctionName The function to be called
 % @param Parameter The Parameter for the python function
 % @param Return The return value of the python function as a string
