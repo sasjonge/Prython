@@ -121,7 +121,6 @@ Here a graph of the speedtest:
 To run the PLUnit tests:
 
 ```prolog
-use_module(prython).
 load_test_files(prython).
 run_tests.
 ```
