@@ -1,6 +1,6 @@
 # Prython
 
-Prython is a prolog module to run python functions in prolog.
+Prython is a fast and easy-to-use prolog module to run python functions in prolog. It uses the bi-directional Python-Java bridge JPY to call CPython directly.
 
 ## Installation
 
@@ -25,32 +25,53 @@ to your path to the jpyconfig.properties files.
 
 ## Usage
 
-There are two recommended predicates to call python functions. The first one is 
-
-`py_call(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.`
-
-, where PathTo is the path to the python file, ScriptName the name of the python script, FunctionName the name of the function to call and Parameter a list of parameters for the python call. To use this you need to know the path to the python file you want to use. An example call would look like this:
+Before you can use the python call functions you first need to call `py_call_init`. If you changed the path to the jpyconfig.properties in prython.pl, you only need to call:
 
 ```
-?- py_call('/home/sascha/suturo16/prython/scripts','test','ret_num',['9','8','5'],Return).
-Return = 22.3123123.
+py_call_init.
+``` 
+
+Else you need to specify your path to the jpyconfig.properties:
+
+```
+py_call_init('/path/to/your/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties').
 ```
 
-Instead of this you can also use,
-
-`py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped)`
-
-where you don't need to give the path to the script. Instead the path need to be added by using `add_py_path(+Path).`.
-
-An example call would look like this:
+To use a python module you need to import it to the JPY python module. An example call would look like this:
 
 ```
 ?- add_py_path('/home/path/to/pythonpackage/scripts').
 true.
-
-?- py_call('test','ret_list',['9','8','5'],Return).
-Return = [9, 8, 5] 
 ```
+
+(See in Chapter Better path handling for further ideas how to call this more dynamic).
+
+Now you can call the python functions. There are two predicates to call python functions. The first one is 
+
+`py_call(+Module:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.`
+
+, where Module is the name of the python module, FunctionName the name of the function to call and Parameter a list of parameters for the python call. To use this you need to know the path to the python file you want to use. An example call would look like this:
+
+```
+?- py_call('test_prython','ret_int',[1,1,5],Return).
+Return = 7.
+
+```
+
+If you expect a list as return value, you need to call 
+
+`py_call_base(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, +ReturnTypeOfList:string, +ReturnTypeParameterForConstructor:string ?Return) is semidet.`
+
+where ReturnTypeOfList is the type of the Java-List, that is needed to store the python returnvalue. It needs to be an object type like `java.lang.Integer`. ReturnTypeParameterForConstructor is the needed value for the Integer Constructor. For Integer this would be 0.
+
+An example call would look like this:
+
+```
+?- py_call('test_prython','ret_list',[1,1,5],'java.lang.Integer',[0],Return).
+Return = [1, 1, 5].
+```
+
+For further examples have a loke in the test-file prython.plt.
 
 ## TODO
 
@@ -71,13 +92,23 @@ Now I can get the path to the python file automatically like this:
 
 ```
 source_file(File),
-string_concat(Path,'/your_prolog_file.pl',File),
-string_concat(Path,'/../scripts',FullPath)
+string_concat(Path,'/prython.pl',File),
+string_concat(Path,'/../scripts',FullPathStr),
+atom_string(FullPath,FullPathStr),
+add_py_path(FullPath).
 ```
 
 ### Dicts
 
 Another part that is missing is the handling of dict's as return value. This will be added, but will probably use prolog dicts, which are only available with Prolog 7 and newer.
+
+### Python Objects
+
+With this new version, it should be possible to implement a handling for Python Objects. 
+
+## Speed
+
+
 
 ## Tests
 
