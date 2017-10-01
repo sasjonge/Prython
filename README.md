@@ -2,6 +2,27 @@
 
 Prython is a prolog module to run python functions in prolog.
 
+## Installation
+
+This module depends on the bi-directional Python-Java bridge JPY. To follow this, follow the instructions at
+
+`https://github.com/bcdev/jpy`
+
+(If the newer jpy versions stops working, you can use the fork at `https://github.com/sasjonge/jpy`)
+
+If you don't want to set the path to the jpyconfig.properties after every start, you can change the value in the prython.pl file at:
+
+```
+%% py_call_init is det.
+%
+% Inits the jpy core by setting a system proberty and starting the python interpreter
+%
+py_call_init(PathToJPYConfig) :-
+	py_call_init('/path/to/your/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties').
+```
+
+to your path to the jpyconfig.properties files.
+
 ## Usage
 
 There are two recommended predicates to call python functions. The first one is 

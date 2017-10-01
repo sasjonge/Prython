@@ -61,8 +61,17 @@
 %
 % Inits the jpy core by setting a system proberty and starting the python interpreter
 %
-py_call_init :-
-	jpl_call( 'java.lang.System', setProperty, ['jpy.config','/home/sascha/suturo16/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties'], P),
+py_call_init(PathToJPYConfig) :-
+	py_call_init('/path/to/your/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties').
+
+%% py_call_init(+PathToJPYConfig)
+%
+% Inits the jpy core by setting a system proberty and starting the python interpreter
+%
+% @param PathToJPYConfig Path to the jpyconfig.properties file
+%
+py_call_init(PathToJPYConfig) :-
+	jpl_call( 'java.lang.System', setProperty, ['jpy.config',PathToJPYConfig], P),
 	jpl_list_to_array([''],A),
 	jpl_call('org.jpy.PyLib',startPython,[A],Ret).
 
