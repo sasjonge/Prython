@@ -34,19 +34,24 @@
     [
       py_call_init/0,
       py_call_base/4,
+      py_call_base/6,
       py_call/4,
+      py_call/6,
       create_module_of_script/2,
       add_py_path/1,
-      create_parameter_string/2,
       list_to_atom/2,
       return_true_type/2,
       string_list_to_list/2,
       string_list_to_list_one/2,
       string_list_to_list_one/6,
+      parameter_to_java_object_list/2,
+      parameter_to_java_object/2,
       read_lines/2,
       max_depth/2,
       remove_char/3,
-      python_module/1
+      python_module/1,
+      timed_test/0,
+      loop/1
     ]).
 
 :- dynamic
@@ -69,30 +74,32 @@ py_call_init :-
 %
 py_call_base(Module,FunctionName,Parameter,Return):-
 	% TODO Paramets to java_objects
-	jpl_list_to_array(Parameter,ParameterArray),
+	parameter_to_java_object_list(Parameter, ParameterObjects),
+	jpl_datums_to_array(ParameterObjects,ParameterArray),
 	jpl_call(Module,call,[FunctionName,ParameterArray],ReturnValue),
 	jpl_call(ReturnValue,getObjectValue,[],ReturnObject),
-	jpl_call(ReturnObject,toString,[],Return).
+	(jpl_is_object(ReturnObject) -> 
+		jpl_call(ReturnObject,toString,[],Return);
+		Return = ReturnObject).
 %    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
 %    atomic_list_concat(Words, ', ', OLine), % Split the output 
 %    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
 %    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
 %    working_directory(_,OldPath),!.
 
-%		working_directory(OldPath,PathTo),
-%  create_parameter_string(Parameter,ParameterString),
-%	atomic_list_concat(['import sys;import io; import ',ScriptName,
-%		';save_out = sys.stdout;sys.stdout = io.BytesIO(); ret = ',ScriptName,'.'
-%		,FunctionName,'(',ParameterString,');sys.stdout = save_out; print str(ret)'],CallArgu),
-%	setup_call_cleanup(
- %   process_create(path(python),['-c', CallArgu],[stdout(pipe(Out))]),
-%    read_lines(Out,OLines),
-%    close(Out)),
-%    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
-%    atomic_list_concat(Words, ', ', OLine), % Split the output 
-%    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
-%    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
-%    working_directory(_,OldPath),!.
+py_call_base(Module,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,Return):-
+	% TODO Paramets to java_objects
+	parameter_to_java_object_list(Parameter, ParameterObjects),
+	jpl_datums_to_array(ParameterObjects,ParameterArray),
+	jpl_call(Module,call,[FunctionName,ParameterArray],ReturnValue),
+	jpl_new(ReturnTypeOfList,ReturnTypeParameterForConstructor,ObjectOfReturnClass),
+	jpl_call(ObjectOfReturnClass, getClass,[],Class),
+	jpl_call(ReturnValue,getObjectArrayValue,[Class],ObjectArray),
+	jpl_array_to_list(ObjectArray,ReturnArray),
+	maplist(java_to_string,ReturnArray,Return).
+
+java_to_string(Object,String) :-
+	jpl_call(Object,toString,[],String).
 
 %% py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
 %
@@ -107,6 +114,11 @@ py_call_base(Module,FunctionName,Parameter,Return):-
 py_call(ScriptName,FunctionName,Parameter,ReturnTyped) :-
 	create_module_of_script(ScriptName,Module),
 	py_call_base(Module,FunctionName,Parameter,Return),
+	return_true_type(Return,ReturnTyped),!.
+
+py_call(ScriptName,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,ReturnTyped) :-
+	create_module_of_script(ScriptName,Module),
+	py_call_base(Module,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,Return),
 	return_true_type(Return,ReturnTyped),!.
 
 create_module_of_script(ScriptName,Module) :-
@@ -210,18 +222,22 @@ string_list_to_list_one(Original,RestStr,CountBracket,CurrString,CurrList,List) 
   (append(CurrString,[FirstChar],NewString),string_list_to_list_one(Original,Rest,CountBracket,NewString,CurrList,List))
   ).
 
-%% create_parameter_string(Parameter,ParameterString) is semidet.
+%% create_parameter_string(Parameter,ParameterObjects) is semidet.
 %
-create_parameter_string(Parameter,ParameterString) :-
-  list_to_atom(Parameter,ParameterAtom),
-  name(ParameterAtom,ParChr),
-  ParChr=[First|Rest],
-  reverse(Rest,Reversed),
-  Reversed=[FirstRev|RestRev],
-  reverse(RestRev,Cleaned),
-  ((First = 91,FirstRev=93) -> 
-    (name(CleanedAtom,Cleaned),ParameterString=CleanedAtom);
-    ParameterString=ParameterAtom).  
+parameter_to_java_object_list(Parameter,ParameterObjects) :-
+	maplist(parameter_to_java_object,Parameter,ParameterObjects).
+
+parameter_to_java_object(Parameter, Object) :-
+	atom(Parameter),
+	Object = Parameter. %No jpl call necessary here, jpl converts this values automatically
+
+parameter_to_java_object(Parameter, Object) :-
+	float(Parameter),
+	jpl_new('java.lang.Float',[Parameter],Object).
+
+parameter_to_java_object(Parameter, Object) :-
+	integer(Parameter),
+	jpl_new('java.lang.Integer',[Parameter],Object).
 
 list_to_atom(List,Atom) :-
   is_list(List),
@@ -283,3 +299,22 @@ remove_char(String, Char, NewString) :-
 	name(String,CharList),
 	delete(CharList,Char,CleanedCharList),
 	name(NewString,CleanedCharList).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+:- use_module(library(statistics)).
+
+loop(0) :- true.
+
+loop(A) :-
+	timed_test,
+	B is A - 1,
+	loop(B).
+
+timed_test :-
+	%py_call('test_prython','ret_str',['Hello World'],'Hello World').
+	%py_call('test_prython','ret_concatenated_str',['Hello',' World','!'],'Hello World!'),
+	%py_call('test_prython','ret_num',[1,1,1],3.3123123),
+	py_call('test_prython','ret_int',[1,1,5],7).
+	%py_call('test_prython','ret_list',[1,1,5],'java.lang.Integer',[0],[1,1,5]).
