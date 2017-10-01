@@ -57,10 +57,28 @@
 :- dynamic
         python_module/1.
 
+%% py_call_init is det.
+%
+% Inits the jpy core by setting a system proberty and starting the python interpreter
+%
 py_call_init :-
 	jpl_call( 'java.lang.System', setProperty, ['jpy.config','/home/sascha/suturo16/jpy/build/lib.linux-x86_64-2.7/jpyconfig.properties'], P),
 	jpl_list_to_array([''],A),
 	jpl_call('org.jpy.PyLib',startPython,[A],Ret).
+
+%% add_py_path(+Path) is det.
+%
+% Add paths to the python files
+%
+% @param Path Path to the python file
+%
+add_py_path(Path) :-
+	(not(python_module(Module)) -> jpl_call('org.jpy.PyModule',importModule,['sys'],Module);python_module(Module)),
+	jpl_datums_to_array([Path], ParameterArray),
+	jpl_call(Module,getAttribute,['path'],Return),
+	jpl_call(Return,call,[append,ParameterArray],NewModule),
+	ignore((python_module(M),retract(python_module(M)))), % Retract all python_modules
+	assert(python_module(Module)).
 
 %% py_call_base(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, ?Return) is semidet.
 %
@@ -79,14 +97,23 @@ py_call_base(Module,FunctionName,Parameter,Return):-
 	jpl_call(Module,call,[FunctionName,ParameterArray],ReturnValue),
 	jpl_call(ReturnValue,getObjectValue,[],ReturnObject),
 	(jpl_is_object(ReturnObject) -> 
-		jpl_call(ReturnObject,toString,[],Return);
+		java_to_string(ReturnObject,Return);
 		Return = ReturnObject).
-%    atomic_list_concat(OLines,OLine), % To also get strings over more than one line
-%    atomic_list_concat(Words, ', ', OLine), % Split the output 
-%    atomic_list_concat(Words, ',', AtomNoBlank), %to create a string containing no blacks between commas
-%    string_list_to_list(AtomNoBlank,Return), % if the output has the form of a list, create a list out of it
-%    working_directory(_,OldPath),!.
 
+%% py_call_base(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, +ReturnTypeOfList:string, +ReturnTypeParameterForConstructor:string ?Return) is semidet.
+%
+% To call if you expect a list as return type. ReturnTypeOfList has to be the type of the returned list (in java types),
+% only object types are allowed.
+% ReturnTypeParameterForConstructor is needed as parameter of the object constructor.
+%
+% @param PathTo The path to the python file
+% @param ScriptName The name of the python script
+% @param FunctionName The function to be called
+% @param Parameter The Parameter for the python function
+% @param ReturnTypeOfList Type of the returned list. Needs to be a object type.
+% @param ReturnTypeParameterForConstructor Standard value for the constructor of ReturnTypeOfList
+% @param Return The return value of the python function as a string
+%
 py_call_base(Module,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,Return):-
 	% TODO Paramets to java_objects
 	parameter_to_java_object_list(Parameter, ParameterObjects),
@@ -97,9 +124,6 @@ py_call_base(Module,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterF
 	jpl_call(ReturnValue,getObjectArrayValue,[Class],ObjectArray),
 	jpl_array_to_list(ObjectArray,ReturnArray),
 	maplist(java_to_string,ReturnArray,Return).
-
-java_to_string(Object,String) :-
-	jpl_call(Object,toString,[],String).
 
 %% py_call(+ScriptName:string, +FunctionName:string, +Parameter:list, ?ReturnTyped) is semidet.
 %
@@ -116,30 +140,49 @@ py_call(ScriptName,FunctionName,Parameter,ReturnTyped) :-
 	py_call_base(Module,FunctionName,Parameter,Return),
 	return_true_type(Return,ReturnTyped),!.
 
+%% py_call(+PathTo:string, +ScriptName:string, +FunctionName:string, +Parameter:list, +ReturnTypeOfList:string, +ReturnTypeParameterForConstructor:string ?Return) is semidet.
+%
+% Predicate to call a function of a python file. The file need to be placed 
+% at ../scripts from this prolog source lies. It returns the values with the right types.
+%
+% @param PathTo The path to the python file
+% @param ScriptName The name of the python script
+% @param FunctionName The function to be called
+% @param Parameter The Parameter for the python function
+% @param ReturnTypeOfList Type of the returned list. Needs to be a object type.
+% @param ReturnTypeParameterForConstructor Standard value for the constructor of ReturnTypeOfList
+% @param Return The return value of the python function as a string
+%
 py_call(ScriptName,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,ReturnTyped) :-
 	create_module_of_script(ScriptName,Module),
 	py_call_base(Module,FunctionName,Parameter,ReturnTypeOfList,ReturnTypeParameterForConstructor,Return),
 	return_true_type(Return,ReturnTyped),!.
 
+%%%%%%%%%%%%%%% Help Predicates %%%%%%%%%%%%%%%%%%%%%%
+
+
+%% create_module_of_script(ScriptName,Module) 
+%
+% Uses the importModule method of jpy, to 
+% import a Python module into the Python interpreter 
+% and return its Java representation.
+%
+% @param ScriptName Name of python script
+% @param Module Returned Module Object
+%
 create_module_of_script(ScriptName,Module) :-
 	python_module(MetaModule),
 	jpl_call(MetaModule,importModule,[ScriptName],Module).
 
-%% add_py_path(+Path) is det.
+%% java_to_string(+Object, -String)
+% 
+% Simple Wrapper for the toString Method
 %
-% Add paths to the python files
+% @param Object Object to call toString on
+% @param String Returned value of toString call
 %
-% @param Path Path to the python file
-%
-add_py_path(Path) :-
-	(not(python_module(Module)) -> jpl_call('org.jpy.PyModule',importModule,['sys'],Module);python_module(Module)),
-	jpl_datums_to_array([Path], ParameterArray),
-	jpl_call(Module,getAttribute,['path'],Return),
-	jpl_call(Return,call,[append,ParameterArray],NewModule),
-	ignore((python_module(M),retract(python_module(M)))), % Retract all python_modules
-	assert(python_module(Module)).
-
-%%%%%%%%%%%%%%% Help Predicates %%%%%%%%%%%%%%%%%%%%%%
+java_to_string(Object,String) :-
+	jpl_call(Object,toString,[],String).
 
 %% return_true_type(+Input:string, -TypedInput) is semidet.
 %
